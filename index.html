@@ -16,48 +16,18 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        ::selection {
-            background-color: #e0e7ff;
-            color: #312e81;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .modal-anim {
-            animation: fadeIn 0.2s ease-out forwards;
-        }
-        /* Animated Gradient Text */
-        @keyframes gradient-x {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-        .animate-gradient-x {
-            background-size: 200% 200%;
-            animation: gradient-x 3s ease infinite;
-        }
-        /* Floating Animation */
-        @keyframes float-up-down {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-        .animate-float {
-            animation: float-up-down 4s ease-in-out infinite;
-        }
-        /* Dragging Styles */
-        .dragging {
-            opacity: 0.5;
-            cursor: grabbing;
-        }
-        .drag-over-section {
-            border-top: 4px solid #6366f1;
-        }
-        .drag-handle {
-            cursor: grab;
-        }
-        .drag-handle:active {
-            cursor: grabbing;
-        }
+        ::selection { background-color: #e0e7ff; color: #312e81; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .modal-anim { animation: fadeIn 0.2s ease-out forwards; }
+        @keyframes gradient-x { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 3s ease infinite; }
+        @keyframes float-up-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .animate-float { animation: float-up-down 4s ease-in-out infinite; }
+        .dragging { opacity: 0.5; cursor: grabbing; scale: 0.98; }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+        @keyframes slideInUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast-anim { animation: slideInUp 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="bg-[#f8fafc] font-sans text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 relative">
@@ -65,31 +35,41 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect, useCallback, useMemo } = React;
 
-        // --- SVGs / Icons ---
-        const Search = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
-        const MapPin = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
-        const Calendar = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>;
-        const Users = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-        const Star = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
-        const ShieldCheck = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>;
-        const UserCheck = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>;
-        const Bookmark = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>;
-        const Sparkles = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>;
-        const Phone = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
-        const GripVertical = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>;
-        
-        // --- Admin Icons ---
-        const Edit2 = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>;
-        const Lock = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-        const LogOut = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>;
-        const Trash2 = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
-        const Plus = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
-        const X = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+        // --- Icons ---
+        const Search = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
+        const MapPin = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+        const Calendar = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>;
+        const Users = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const Star = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+        const ShieldCheck = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>;
+        const UserCheck = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>;
+        const Bookmark = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>;
+        const Sparkles = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>;
+        const Phone = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
+        const GripVertical = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>;
+        const RefreshCw = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>;
+        const CheckCircle = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        const Edit2 = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>;
+        const Lock = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+        const LogOut = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>;
+        const Trash2 = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
+        const Plus = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+        const X = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
 
-        // --- Initial Data ---
-        const initialCommitteeData = [
+        // --- Data Parser & Original Data ---
+        const parseMember = (memberStr) => {
+            const parts = memberStr.split(' - ');
+            return {
+                id: Math.random().toString(36).substr(2, 9),
+                name: parts[0].trim(),
+                designation: parts[1] ? parts[1].trim() : '',
+                phone: ''
+            };
+        };
+
+        const originalData = [
             { group: 'Advisors', category: 'Chief Advisor', members: ['Pabitra Engti - Additional Chief Engineer Irrigation /KAAC Diphu'] },
             { group: 'Advisors', category: 'Advisor', members: ['Sar Tuleswar Ronghang', 'Sar Haladhar Engti', 'Sar Dhiren Ronghang', 'Sar Pandit Engti', 'Sangpi Ranjeeta Teronpi', 'Sar Chikan kro', 'Sar Bakul Kro', 'Sar Dhani Ram Ronghang', 'Sar Hari Charan Timung', 'Sar Uma Kt. Teron', 'Sar Kesob Terang - KCS, CC', 'Sar Dhan Sing Terang - Bidisar, KLA, Tiripi', 'Sar Harinath Ronghang - Retired ACF', 'Sar Kehai Timung - KCS, CC', 'Sar Madhuram Lakthe EM, КААС'] },
             { group: 'Core', category: 'Executive President', members: ['Sar Lalit ch. Teron'] },
@@ -109,122 +89,78 @@
             { group: 'Sub-Committees', category: 'Gate Sub-Committee', members: ['Sar Momin Kro', 'Sar Dipankar Tokbi', 'Sar Deben Engti', 'Sar Joy Sing Singnar'] },
             { group: 'Sub-Committees', category: 'Accomodation Sub-Committee', members: ['Sar Hemsing Teron - Chairman, BMB', 'Sami Anita Saikia - Vice Chair Person BMB', 'Sar Jitu Engti', 'Sar Tinku Engti', 'Sar Himanta Teron', 'Sar Sona sing', 'Sar Nitu Timung', 'Sar Amlan Kro', 'Sar Basanta Ronghang', 'Sar Mangal sing Ronghang'] },
             { group: 'Members', category: 'Members', members: ['Sar Padmu Knowar', 'Sar Arimdrom Kro', 'Sar Arpon Enghi', 'Sami Neha Moni Engtipi', 'Sami Rupali Engtipi', 'Sami Kakuli Teronpi', 'Sami Humsira Teronpi', 'Sami Joya Timungpi', 'Sar Vivek Kro', 'Sar Anjan Timung', 'Sar Bhagadutta Teron', 'Sar Nayan Jyoti Teron', 'Sar Mukul Engti', 'Sar Ajay Ronghang', 'Sar Satyajit Engti', 'Sar Dilip Teron', 'Sar Debo Kanta Ronghang', 'Sar Pulak Timung', 'Sar Rakesh Teron'] }
-        ];
-
-        // --- Helper Functions ---
-        const getInitials = (fullName) => {
-            let cleanName = fullName.replace(/^(Sar |Sami |Sangpi |Dr\. )/i, '').trim();
-            let parts = cleanName.split(' ');
-            if (parts.length >= 2) {
-                return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
-            }
-            return cleanName.substring(0, 2).toUpperCase();
-        };
-
-        const getAvatarColor = (name) => {
-            const colors = [
-                'bg-gradient-to-br from-blue-400 to-indigo-500',
-                'bg-gradient-to-br from-emerald-400 to-teal-500',
-                'bg-gradient-to-br from-rose-400 to-red-500',
-                'bg-gradient-to-br from-purple-400 to-pink-500',
-                'bg-gradient-to-br from-amber-400 to-orange-500',
-            ];
-            let sum = 0;
-            for (let i = 0; i < name.length; i++) {
-                sum += name.charCodeAt(i);
-            }
-            return colors[sum % colors.length];
-        };
-
-        const generatePhone = (name) => {
-            let hash = 0;
-            for (let i = 0; i < name.length; i++) {
-                hash = name.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            const uniqueNum = Math.abs(hash).toString().padStart(8, '0').slice(0, 8);
-            return {
-                display: `+91 98${uniqueNum.slice(0,3)} ${uniqueNum.slice(3,8)}`,
-                dial: `+9198${uniqueNum}`
-            };
-        };
-
-        const parseInitialMember = (memberStr) => {
-            const [name, ...desigParts] = memberStr.split(' - ');
-            return {
-                id: Math.random().toString(36).substr(2, 9),
-                name: name.trim(),
-                designation: desigParts.join(' - ').trim(),
-                phone: ''
-            };
-        };
-
-        const initialDataObj = initialCommitteeData.map(section => ({
-            ...section,
-            members: section.members.map(parseInitialMember)
+        ].map(sec => ({
+            ...sec,
+            members: sec.members.map(parseMember)
         }));
 
-        // --- Main App Component ---
+        const STORAGE_KEY = 'domahi_committee_v4_final';
+
         function App() {
-            // App State
-            const [committeeData, setCommitteeData] = useState(initialDataObj);
+            const [committeeData, setCommitteeData] = useState(() => {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    return saved ? JSON.parse(saved) : originalData;
+                } catch (e) {
+                    return originalData;
+                }
+            });
+
+            useEffect(() => {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(committeeData));
+            }, [committeeData]);
+
             const [searchTerm, setSearchTerm] = useState('');
-            
-            // Admin State
             const [isAdmin, setIsAdmin] = useState(false);
             const [showLoginModal, setShowLoginModal] = useState(false);
             const [passwordInput, setPasswordInput] = useState('');
             const [loginError, setLoginError] = useState(false);
-
-            // Drag State
+            const [toast, setToast] = useState(null);
             const [draggedItemIndex, setDraggedItemIndex] = useState(null);
-            const [draggedMemberInfo, setDraggedMemberInfo] = useState(null); // {sectionIndex, memberIndex}
-
-            // Add/Edit Member State
+            const [draggedMemberInfo, setDraggedMemberInfo] = useState(null);
             const [showAddModal, setShowAddModal] = useState(false);
-            const [isNewCategory, setIsNewCategory] = useState(false);
             const [isEditMode, setIsEditMode] = useState(false);
+            const [isNewCategory, setIsNewCategory] = useState(false);
             const [editingMemberId, setEditingMemberId] = useState(null);
-            const [newMember, setNewMember] = useState({
-                group: 'Members',
-                category: 'Members',
-                name: '',
-                designation: '',
-                phone: ''
-            });
+            const [newMember, setNewMember] = useState({ group: 'Members', category: 'Members', name: '', designation: '', phone: '' });
 
-            // Filter Logic (Note: Drag and drop is disabled while searching to avoid data inconsistency)
-            const filteredData = searchTerm 
-                ? committeeData.map(section => {
-                    const matchesCategory = section.category.toLowerCase().includes(searchTerm.toLowerCase());
-                    const matchedMembers = section.members.filter(member => 
-                        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        member.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (member.phone && member.phone.includes(searchTerm))
-                    );
-
-                    if (matchesCategory) return section;
-                    return { ...section, members: matchedMembers };
-                }).filter(section => section.members.length > 0)
-                : committeeData;
-
-            // Group Styles
-            const getGroupStyle = (group) => {
-                switch (group) {
-                case 'Advisors': return { icon: <Star className="w-6 h-6 text-amber-500" />, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' };
-                case 'Core': return { icon: <ShieldCheck className="w-6 h-6 text-purple-500" />, bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' };
-                case 'Sub-Committees': return { icon: <Users className="w-6 h-6 text-blue-500" />, bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' };
-                case 'Members': return { icon: <UserCheck className="w-6 h-6 text-emerald-500" />, bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' };
-                default: return { icon: <Bookmark className="w-6 h-6 text-slate-500" />, bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' };
-                }
+            const showFeedback = (msg) => {
+                setToast(msg);
+                setTimeout(() => setToast(null), 3000);
             };
 
-            const currentGroupCategories = Array.from(new Set(
-                committeeData
-                    .filter(c => c.group === newMember.group)
-                    .map(c => c.category)
-            ));
+            const getInitials = (n) => {
+                let clean = n.replace(/^(Sar |Sami |Sangpi |Dr\. )/i, '').trim();
+                let parts = clean.split(' ');
+                return parts.length >= 2 ? (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase() : clean.substring(0, 2).toUpperCase();
+            };
 
-            // --- Admin Functions ---
+            const getAvatarColor = (n) => {
+                const colors = ['bg-gradient-to-br from-blue-400 to-indigo-500', 'bg-gradient-to-br from-emerald-400 to-teal-500', 'bg-gradient-to-br from-rose-400 to-red-500', 'bg-gradient-to-br from-purple-400 to-pink-500', 'bg-gradient-to-br from-amber-400 to-orange-500'];
+                let sum = 0; for(let i=0; i<n.length; i++) sum += n.charCodeAt(i);
+                return colors[sum % colors.length];
+            };
+
+            const generatePhoneFallback = (name) => {
+                let hash = 0; for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                const uniqueNum = Math.abs(hash).toString().padStart(8, '0').slice(0, 8);
+                return { display: `+91 98${uniqueNum.slice(0,3)} ${uniqueNum.slice(3,8)}`, dial: `+9198${uniqueNum}` };
+            };
+
+            const filteredData = useMemo(() => {
+                if (!searchTerm) return committeeData;
+                return committeeData.map(sec => {
+                    const matchedMembers = sec.members.filter(m => 
+                        m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        m.designation.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    const matchedCategory = sec.category.toLowerCase().includes(searchTerm.toLowerCase());
+                    return matchedMembers.length > 0 || matchedCategory
+                        ? { ...sec, members: matchedMembers.length > 0 ? matchedMembers : sec.members }
+                        : null;
+                }).filter(Boolean);
+            }, [committeeData, searchTerm]);
+
             const handleLogin = (e) => {
                 e.preventDefault();
                 if (passwordInput === 'arya123') {
@@ -232,581 +168,251 @@
                     setShowLoginModal(false);
                     setPasswordInput('');
                     setLoginError(false);
-                } else {
-                    setLoginError(true);
-                }
+                    showFeedback("Welcome Admin!");
+                } else { setLoginError(true); }
             };
 
-            const handleLogout = () => {
-                setIsAdmin(false);
-            };
-
-            // --- Drag & Drop Logic ---
-            
-            // Section Drag
-            const onSectionDragStart = (index) => {
-                if (!isAdmin || searchTerm) return;
-                setDraggedItemIndex(index);
-            };
-
-            const onSectionDragOver = (e) => {
+            const handleSaveMember = (e) => {
                 e.preventDefault();
-            };
-
-            const onSectionDrop = (targetIndex) => {
-                if (!isAdmin || searchTerm || draggedItemIndex === null) return;
-                
-                const newData = [...committeeData];
-                const movedItem = newData.splice(draggedItemIndex, 1)[0];
-                newData.splice(targetIndex, 0, movedItem);
-                
-                setCommitteeData(newData);
-                setDraggedItemIndex(null);
-            };
-
-            // Member Drag
-            const onMemberDragStart = (sectionIdx, memberIdx) => {
-                if (!isAdmin || searchTerm) return;
-                setDraggedMemberInfo({ sectionIdx, memberIdx });
-            };
-
-            const onMemberDrop = (targetSectionIdx, targetMemberIdx) => {
-                if (!isAdmin || searchTerm || !draggedMemberInfo) return;
-                
-                const { sectionIdx: startSecIdx, memberIdx: startMemIdx } = draggedMemberInfo;
-                
-                // Only allow drag within same section for simplicity and logic safety
-                if (startSecIdx !== targetSectionIdx) {
-                    setDraggedMemberInfo(null);
-                    return;
-                }
-
-                const newData = [...committeeData];
-                const section = newData[targetSectionIdx];
-                const members = [...section.members];
-                
-                const movedMember = members.splice(startMemIdx, 1)[0];
-                members.splice(targetMemberIdx, 0, movedMember);
-                
-                newData[targetSectionIdx] = { ...section, members };
-                
-                setCommitteeData(newData);
-                setDraggedMemberInfo(null);
-            };
-
-            const handleDeleteMember = (categoryName, memberId) => {
-                if (window.confirm('Are you sure you want to remove this member?')) {
-                    const newData = committeeData.map(section => {
-                        if (section.category === categoryName) {
-                            return { ...section, members: section.members.filter(m => m.id !== memberId) };
-                        }
-                        return section;
-                    }).filter(section => section.members.length > 0);
-                    
-                    setCommitteeData(newData);
-                }
-            };
-
-            const openAddModal = () => {
-                setNewMember({
-                    group: 'Members',
-                    category: 'Members',
-                    name: '',
-                    designation: '',
-                    phone: ''
-                });
-                setIsEditMode(false);
-                setEditingMemberId(null);
-                setIsNewCategory(false);
-                setShowAddModal(true);
-            };
-
-            const handleEditMember = (section, member) => {
-                setNewMember({
-                    group: section.group,
-                    category: section.category,
-                    name: member.name,
-                    designation: member.designation,
-                    phone: member.phone || ''
-                });
-                setIsEditMode(true);
-                setEditingMemberId(member.id);
-                setIsNewCategory(false);
-                setShowAddModal(true);
-            };
-
-            const handleGroupChange = (e) => {
-                const newGroup = e.target.value;
-                const groupCats = Array.from(new Set(
-                    committeeData
-                        .filter(c => c.group === newGroup)
-                        .map(c => c.category)
-                ));
-                
-                if (groupCats.length > 0) {
-                    setIsNewCategory(false);
-                    setNewMember({...newMember, group: newGroup, category: groupCats[0]});
-                } else {
-                    setIsNewCategory(true);
-                    setNewMember({...newMember, group: newGroup, category: ''});
-                }
-            };
-
-            const handleAddMember = (e) => {
-                e.preventDefault();
-                if(!newMember.name.trim()) return;
-
-                const updatedMemberObj = {
+                const memberObj = {
                     id: isEditMode ? editingMemberId : Math.random().toString(36).substr(2, 9),
                     name: newMember.name.trim(),
                     designation: newMember.designation.trim(),
                     phone: newMember.phone.trim()
                 };
 
-                let newData = [...committeeData];
+                setCommitteeData(prev => {
+                    let next = isEditMode 
+                        ? prev.map(sec => ({...sec, members: sec.members.filter(m => m.id !== editingMemberId)}))
+                        : [...prev];
+                    
+                    let found = false;
+                    next = next.map(sec => {
+                        if (sec.group === newMember.group && sec.category === newMember.category) {
+                            found = true;
+                            return { ...sec, members: [...sec.members, memberObj] };
+                        }
+                        return sec;
+                    });
 
-                if (isEditMode) {
-                    newData = newData.map(sec => ({
-                        ...sec,
-                        members: sec.members.filter(m => m.id !== editingMemberId)
-                    }));
-                }
-
-                let categoryFound = false;
-                newData = newData.map(section => {
-                    if (section.group === newMember.group && section.category.toLowerCase() === newMember.category.toLowerCase()) {
-                        categoryFound = true;
-                        return { ...section, members: [...section.members, updatedMemberObj] };
+                    if (!found) {
+                        next.push({ group: newMember.group, category: newMember.category, members: [memberObj] });
                     }
-                    return section;
+                    return next.filter(sec => sec.members.length > 0);
                 });
 
-                if (!categoryFound) {
-                    newData.push({
-                        group: newMember.group,
-                        category: newMember.category || newMember.group,
-                        members: [updatedMemberObj]
-                    });
-                }
-
-                newData = newData.filter(section => section.members.length > 0);
-
-                setCommitteeData(newData);
                 setShowAddModal(false);
+                showFeedback("Saved successfully!");
+            };
+
+            const onSectionDrop = (target) => {
+                if (draggedItemIndex === null) return;
+                setCommitteeData(prev => {
+                    const next = [...prev];
+                    const [moved] = next.splice(draggedItemIndex, 1);
+                    next.splice(target, 0, moved);
+                    return next;
+                });
+                setDraggedItemIndex(null);
+                showFeedback("Section reordered!");
+            };
+
+            const onMemberDrop = (sIdx, mIdx) => {
+                if (!draggedMemberInfo || draggedMemberInfo.sectionIdx !== sIdx) return;
+                setCommitteeData(prev => {
+                    const next = [...prev];
+                    const sec = {...next[sIdx]};
+                    const mems = [...sec.members];
+                    const [moved] = mems.splice(draggedMemberInfo.memberIdx, 1);
+                    mems.splice(mIdx, 0, moved);
+                    sec.members = mems;
+                    next[sIdx] = sec;
+                    return next;
+                });
+                setDraggedMemberInfo(null);
+                showFeedback("Member reordered!");
+            };
+
+            const getGroupStyle = (g) => {
+                const styles = {
+                    'Advisors': { icon: <Star className="w-6 h-6 text-amber-500" />, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+                    'Core': { icon: <ShieldCheck className="w-6 h-6 text-purple-500" />, bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
+                    'Sub-Committees': { icon: <Users className="w-6 h-6 text-blue-500" />, bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
+                    'Members': { icon: <UserCheck className="w-6 h-6 text-emerald-500" />, bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' }
+                };
+                return styles[g] || styles['Members'];
             };
 
             return (
-                <div className="pb-16 bg-[#f8fafc] min-h-screen relative pt-[72px]">
-                
-                {/* --- FIXED Navbar --- */}
-                <div className="fixed top-0 left-0 w-full px-4 sm:px-6 py-4 flex justify-between items-center z-50 bg-indigo-950/90 backdrop-blur-md border-b border-white/10 shadow-lg">
-                    <div className="text-white font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-amber-400" /> Domahi 2026
+                <div className="pb-20 min-h-screen relative pt-[72px]">
+                    {/* Header */}
+                    <div className="fixed top-0 left-0 w-full px-4 sm:px-6 py-4 flex justify-between items-center z-50 bg-indigo-950/90 backdrop-blur-md shadow-lg border-b border-white/10">
+                        <div className="text-white font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-amber-400" /> Domahi 2026
+                        </div>
+                        <div className="flex gap-2">
+                            {isAdmin && (
+                                <button onClick={() => { if(confirm("Kya aap data reset karna chahte hain?")) setCommitteeData(originalData); }} className="p-2 bg-amber-500/20 text-amber-100 rounded-full border border-amber-500/30"><RefreshCw className="w-4 h-4" /></button>
+                            )}
+                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="px-4 py-2 bg-indigo-500/20 text-indigo-100 rounded-full text-xs font-bold border border-indigo-500/30 flex items-center gap-2">
+                                {isAdmin ? <LogOut className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                                {isAdmin ? 'Logout Admin' : 'Admin Login'}
+                            </button>
+                        </div>
                     </div>
-                    {isAdmin ? (
-                        <button 
-                            onClick={handleLogout}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/40 text-rose-100 rounded-full text-xs sm:text-sm font-bold backdrop-blur-md transition-all border border-rose-500/30 shadow-sm"
-                        >
-                            <LogOut className="w-3 h-3 sm:w-4 sm:h-4" /> 
-                            <span className="hidden sm:inline">Logout Admin</span>
-                            <span className="sm:hidden">Logout</span>
-                        </button>
-                    ) : (
-                        <button 
-                            onClick={() => setShowLoginModal(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-100 rounded-full text-xs sm:text-sm font-bold backdrop-blur-md transition-all border border-indigo-500/30 shadow-sm"
-                        >
-                            <Lock className="w-3 h-3 sm:w-4 sm:h-4" /> 
-                            <span className="hidden sm:inline">Admin Login</span>
-                            <span className="sm:hidden">Admin</span>
-                        </button>
+
+                    {/* Toast */}
+                    {toast && (
+                        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] toast-anim bg-slate-900 text-white px-6 py-3 rounded-2xl flex items-center gap-3 shadow-2xl border border-white/10">
+                            <CheckCircle className="w-5 h-5 text-emerald-400" /> <span className="font-bold text-sm">{toast}</span>
+                        </div>
                     )}
-                </div>
 
-                {isAdmin && (
-                    <button 
-                        onClick={openAddModal}
-                        className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white p-4 rounded-full shadow-lg shadow-indigo-300 hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-2 font-bold"
-                    >
-                        <Plus className="w-6 h-6" />
-                        <span className="hidden sm:block pr-2">Add Member</span>
-                    </button>
-                )}
-
-                {/* Hero Section */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-800 pt-16 pb-28 sm:pt-20 sm:pb-32 px-4 sm:px-6 shadow-2xl">
-                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-30 pointer-events-none">
-                    <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[70%] rounded-full bg-gradient-to-br from-purple-400 to-indigo-300 blur-3xl mix-blend-overlay"></div>
-                    <div className="absolute top-[30%] -right-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-bl from-pink-400 to-orange-300 blur-3xl mix-blend-overlay"></div>
-                    </div>
-
-                    <div className="relative z-10 max-w-5xl mx-auto text-center space-y-6 sm:space-y-8 animate-float">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-blue-100 text-xs sm:text-sm font-bold tracking-widest uppercase mb-2 shadow-lg">
-                        <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-amber-300" />
-                        Reception Committee
-                    </div>
-                    
-                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white drop-shadow-lg leading-tight">
-                        31<sup>st</sup> DOMAHI ARONG AJI <br className="hidden sm:block" /> 
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-orange-500 animate-gradient-x inline-block mt-2"> 2026</span>
-                    </h1>
-                    
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-8 mt-6 sm:mt-10 text-xs sm:text-sm md:text-base font-medium text-indigo-50 bg-black/30 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 w-full sm:w-max mx-auto backdrop-blur-md shadow-xl">
-                        <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
-                        <div className="p-2 sm:p-2.5 bg-white/10 rounded-xl"><Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" /></div>
-                        <span>26<sup>th</sup> - 28<sup>th</sup> April 2026</span>
+                    {/* Hero (Original Style) */}
+                    <div className="bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-800 pt-16 pb-32 px-6 text-center shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-30 pointer-events-none">
+                            <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[70%] rounded-full bg-gradient-to-br from-purple-400 to-indigo-300 blur-3xl mix-blend-overlay"></div>
+                            <div className="absolute top-[30%] -right-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-bl from-pink-400 to-orange-300 blur-3xl mix-blend-overlay"></div>
                         </div>
-                        <div className="hidden sm:block w-px h-10 bg-white/20"></div>
-                        <div className="flex items-center gap-3 w-full sm:w-auto justify-center text-center sm:text-left">
-                        <div className="p-2 sm:p-2.5 bg-white/10 rounded-xl shrink-0"><MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-rose-300" /></div>
-                        <span className="leading-snug">Dharamtul Manik Teron Aklam, Richo Hidi, Karbi Anglong</span>
+                        <div className="relative z-10 animate-float space-y-6">
+                            <div className="inline-block px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-blue-100 text-xs sm:text-sm font-bold uppercase tracking-widest shadow-lg">Reception Committee</div>
+                            <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold text-white leading-tight">31<sup>st</sup> DOMAHI ARONG AJI <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-orange-500 animate-gradient-x inline-block mt-2"> 2026</span></h1>
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-indigo-50 bg-black/30 p-5 rounded-3xl border border-white/10 w-full sm:w-max mx-auto backdrop-blur-md shadow-xl text-sm sm:text-base">
+                                <span className="flex items-center gap-3"><Calendar className="w-5 h-5 text-amber-300" /> 26<sup>th</sup> - 28<sup>th</sup> April 2026</span>
+                                <div className="hidden sm:block w-px h-8 bg-white/20"></div>
+                                <span className="flex items-center gap-3"><MapPin className="w-5 h-5 text-rose-300" /> Dharamtul Manik Teron Aklam, Richo Hidi, Karbi Anglong</span>
+                            </div>
                         </div>
                     </div>
-                    </div>
-                </div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-12 sm:-mt-16 relative z-20">
-                    
-                    {/* Search Bar */}
-                    <div className="sticky top-20 z-40 bg-white/85 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-2 sm:p-3 mb-8 sm:mb-16 border border-white/60">
-                    <div className="relative flex items-center bg-slate-100/70 rounded-3xl overflow-hidden focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500 transition-all duration-300">
-                        <div className="pl-4 sm:pl-6 pointer-events-none">
-                        <Search className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" />
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-12 sm:-mt-16 relative z-20">
+                        {/* Search (Glassmorphism) */}
+                        <div className="sticky top-20 z-40 bg-white/85 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-2 mb-10 border border-white/60">
+                            <div className="flex items-center bg-slate-100/70 rounded-3xl overflow-hidden focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500 transition-all duration-300">
+                                <Search className="ml-5 h-6 w-6 text-indigo-500" />
+                                <input type="text" className="w-full px-4 py-4 sm:py-5 bg-transparent border-none text-slate-800 placeholder-slate-400 focus:ring-0 text-lg font-medium outline-none" placeholder="Search name, role, or number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                {searchTerm && <button onClick={() => setSearchTerm('')} className="mr-6 text-slate-400 hover:text-rose-500 font-bold text-xs uppercase tracking-wider">Clear</button>}
+                            </div>
                         </div>
-                        <input
-                        type="text"
-                        className="block w-full pl-3 sm:pl-4 pr-4 sm:pr-6 py-4 sm:py-5 bg-transparent border-none text-slate-800 placeholder-slate-400 focus:ring-0 text-base sm:text-lg outline-none font-medium"
-                        placeholder="Search name, role, or number..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        {searchTerm && (
-                        <button 
-                            onClick={() => setSearchTerm('')}
-                            className="pr-4 sm:pr-6 text-slate-400 hover:text-rose-500 font-bold text-xs sm:text-sm transition-colors uppercase tracking-wider"
-                        >
-                            Clear
-                        </button>
-                        )}
+
+                        {/* Committee Sections */}
+                        <div className="space-y-10">
+                            {filteredData.map((section, sIdx) => {
+                                const style = getGroupStyle(section.group);
+                                return (
+                                    <div 
+                                        key={section.category + sIdx}
+                                        draggable={isAdmin && !searchTerm}
+                                        onDragStart={() => setDraggedItemIndex(sIdx)}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={() => onSectionDrop(sIdx)}
+                                        className={`bg-white rounded-[2rem] overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 transition-all duration-500 ${draggedItemIndex === sIdx ? 'dragging' : ''}`}
+                                    >
+                                        <div className={`px-6 sm:px-10 py-8 border-b border-slate-100/80 flex flex-col sm:flex-row items-center justify-between gap-4 ${style.bg} bg-opacity-30`}>
+                                            <div className="flex items-center gap-4">
+                                                {isAdmin && !searchTerm && <div className="drag-handle p-2 opacity-40 hover:opacity-100"><GripVertical className="w-6 h-6 text-slate-400" /></div>}
+                                                <div className={`p-4 bg-white rounded-2xl shadow-sm border ${style.border}`}>{style.icon}</div>
+                                                <div>
+                                                    <span className={`text-xs font-bold uppercase tracking-widest ${style.text} mb-1 block`}>{section.group}</span>
+                                                    <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">{section.category}</h2>
+                                                </div>
+                                            </div>
+                                            <span className="px-4 py-1.5 bg-white rounded-full text-xs sm:text-sm font-bold text-slate-500 shadow-sm border border-slate-200">{section.members.length} Members</span>
+                                        </div>
+                                        
+                                        <div className="p-6 lg:p-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-gradient-to-b from-white to-slate-50/50">
+                                            {section.members.map((m, mIdx) => {
+                                                const fallback = generatePhoneFallback(m.name);
+                                                const dPhone = m.phone || fallback.display;
+                                                const isDraggingMember = draggedMemberInfo?.memberIdx === mIdx && draggedMemberInfo?.sectionIdx === sIdx;
+
+                                                return (
+                                                    <div 
+                                                        key={m.id}
+                                                        draggable={isAdmin && !searchTerm}
+                                                        onDragStart={() => setDraggedMemberInfo({ sectionIdx: sIdx, memberIdx: mIdx })}
+                                                        onDragOver={(e) => e.preventDefault()}
+                                                        onDrop={(e) => { e.stopPropagation(); onMemberDrop(sIdx, mIdx); }}
+                                                        className={`group flex items-center p-4 rounded-2xl bg-white border border-slate-200/60 hover:border-indigo-300 hover:shadow-md transition-all relative ${isDraggingMember ? 'dragging' : ''}`}
+                                                    >
+                                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                        {isAdmin && !searchTerm && <div className="drag-handle pr-2 opacity-30 group-hover:opacity-100"><GripVertical className="w-4 h-4 text-slate-300" /></div>}
+                                                        <div className={`w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-inner ${getAvatarColor(m.name)} mr-4`}>{getInitials(m.name)}</div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-bold text-slate-800 truncate group-hover:text-indigo-700 transition-colors">{m.name}</p>
+                                                            <p className="text-xs text-slate-500 truncate flex items-center gap-1.5 mt-0.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>{m.designation || 'Committee Member'}</p>
+                                                            <p className="text-xs text-slate-500 mt-1.5 font-semibold flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-500" /> {dPhone}</p>
+                                                        </div>
+                                                        <div className="flex gap-1 ml-2 pl-2 border-l border-slate-100">
+                                                            {isAdmin ? (
+                                                                <>
+                                                                    <button onClick={() => { setNewMember({ ...m, group: section.group, category: section.category }); setEditingMemberId(m.id); setIsEditMode(true); setShowAddModal(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                                                                    <button onClick={() => { if(confirm("Kya aap ise nikalna chahte hain?")) setCommitteeData(prev => prev.map(s => s.category === section.category ? {...s, members: s.members.filter(x => x.id !== m.id)} : s).filter(s => s.members.length > 0)); }} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                                                                </>
+                                                            ) : (
+                                                                <a href={`tel:${m.phone || fallback.dial}`} className="p-2.5 text-emerald-600 bg-emerald-50 rounded-full hover:bg-emerald-500 hover:text-white transition-all shadow-sm"><Phone className="w-4 h-4" /></a>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    </div>
+
+                    {/* Modals */}
+                    {showLoginModal && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                            <form onSubmit={handleLogin} className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl modal-anim text-center border border-slate-100">
+                                <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6 mx-auto"><Lock className="w-7 h-7" /></div>
+                                <h3 className="text-2xl font-extrabold text-slate-800 mb-2">Admin Panel</h3>
+                                <p className="text-slate-500 text-sm mb-6">Enter password to enable edit mode.</p>
+                                <input type="password" placeholder="Password" className="w-full px-4 py-3 rounded-xl border border-slate-200 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none font-bold tracking-[0.2em] text-center bg-slate-50" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} autoFocus />
+                                {loginError && <p className="text-rose-500 text-xs mb-4 font-bold">Incorrect Password!</p>}
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={() => setShowLoginModal(false)} className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
+                                    <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg">Login</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {showAddModal && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                            <div className="bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl modal-anim relative max-h-[90vh] overflow-y-auto border border-slate-100">
+                                <h3 className="text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-3"><span className="bg-indigo-100 text-indigo-600 p-2.5 rounded-xl">{isEditMode ? <Edit2 className="w-6 h-6" /> : <Plus className="w-6 h-6" />}</span>{isEditMode ? 'Edit Member' : 'Add New Member'}</h3>
+                                <form onSubmit={handleSaveMember} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs font-bold text-slate-500 uppercase ml-1">Group</label><select className="w-full p-3.5 rounded-xl border bg-slate-50 mt-1 font-medium" value={newMember.group} onChange={(e) => setNewMember({...newMember, group: e.target.value})}> <option value="Advisors">Advisors</option><option value="Core">Core Committee</option><option value="Sub-Committees">Sub-Committees</option><option value="Members">Members</option></select></div>
+                                        <div><label className="text-xs font-bold text-slate-500 uppercase ml-1">Category</label><select className="w-full p-3.5 rounded-xl border bg-slate-50 mt-1 font-medium" value={isNewCategory ? '__NEW__' : newMember.category} onChange={(e) => { if(e.target.value === '__NEW__') setIsNewCategory(true); else { setIsNewCategory(false); setNewMember({...newMember, category: e.target.value}); } }}>{Array.from(new Set(committeeData.filter(x => x.group === newMember.group).map(x => x.category))).map(c => <option key={c} value={c}>{c}</option>)}<option value="__NEW__">+ New Category</option></select></div>
+                                    </div>
+                                    {isNewCategory && <input type="text" placeholder="Category Name" className="w-full p-4 border rounded-xl bg-white shadow-inner focus:ring-2 focus:ring-indigo-500 outline-none" value={newMember.category} onChange={(e) => setNewMember({...newMember, category: e.target.value})} required />}
+                                    <input type="text" placeholder="Full Name" className="w-full p-4 border rounded-xl bg-slate-50 shadow-inner focus:ring-2 focus:ring-indigo-500 outline-none" value={newMember.name} onChange={(e) => setNewMember({...newMember, name: e.target.value})} required />
+                                    <input type="text" placeholder="Designation (Optional)" className="w-full p-4 border rounded-xl bg-slate-50 shadow-inner focus:ring-2 focus:ring-indigo-500 outline-none" value={newMember.designation} onChange={(e) => setNewMember({...newMember, designation: e.target.value})} />
+                                    <input type="text" placeholder="Phone Number (Optional)" className="w-full p-4 border rounded-xl bg-slate-50 shadow-inner focus:ring-2 focus:ring-indigo-500 outline-none" value={newMember.phone} onChange={(e) => setNewMember({...newMember, phone: e.target.value})} />
+                                    <div className="flex gap-4 pt-4">
+                                        <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-4 font-bold text-slate-400 hover:text-slate-600">Cancel</button>
+                                        <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-colors">Save Details</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
 
                     {isAdmin && (
-                        <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 px-5 py-3 rounded-2xl mb-8 flex flex-col sm:flex-row justify-between items-center shadow-sm mx-2 modal-anim gap-2">
-                            <span className="font-bold flex items-center gap-2 text-sm sm:text-base">
-                                <ShieldCheck className="w-5 h-5" /> Admin Mode Active
-                            </span>
-                            <span className="text-xs sm:text-sm text-center">Drag the <GripVertical className="inline w-4 h-4" /> icons to reorder sections or members.</span>
-                        </div>
+                        <button onClick={() => { setIsEditMode(false); setIsNewCategory(false); setNewMember({group: 'Members', category: 'Members', name: '', designation: '', phone: ''}); setShowAddModal(true); }} className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white p-5 rounded-full shadow-2xl hover:scale-105 transition-all ring-4 ring-indigo-100 flex items-center justify-center">
+                            <Plus className="w-8 h-8" />
+                        </button>
                     )}
 
-                    {/* Results / List Section */}
-                    {filteredData.length === 0 ? (
-                    <div className="text-center py-20 sm:py-32 bg-white rounded-3xl border border-slate-100 shadow-sm mx-2">
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Users className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300" />
-                        </div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-slate-700">No records found</h3>
-                        <p className="text-slate-500 mt-2 text-base sm:text-lg">Please try a different search term.</p>
-                    </div>
-                    ) : (
-                    <div className="grid grid-cols-1 gap-6 sm:gap-10">
-                        {filteredData.map((section, sectionIndex) => {
-                        const style = getGroupStyle(section.group);
-                        
-                        return (
-                            <div 
-                                key={section.category + sectionIndex} 
-                                draggable={isAdmin && !searchTerm}
-                                onDragStart={() => onSectionDragStart(sectionIndex)}
-                                onDragOver={onSectionDragOver}
-                                onDrop={() => onSectionDrop(sectionIndex)}
-                                className={`bg-white rounded-3xl sm:rounded-[2rem] overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 transition-all duration-500 relative ${draggedItemIndex === sectionIndex ? 'dragging' : ''}`}
-                            >
-                            <div className={`px-5 py-6 sm:px-10 sm:py-8 border-b border-slate-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${style.bg} bg-opacity-30`}>
-                                <div className="flex items-center gap-4 sm:gap-5">
-                                    {isAdmin && !searchTerm && (
-                                        <div className="drag-handle p-2 hover:bg-white/50 rounded-lg transition-colors">
-                                            <GripVertical className="w-5 h-5 text-slate-400" />
-                                        </div>
-                                    )}
-                                    <div className={`p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl shadow-sm border ${style.border}`}>
-                                        {style.icon}
-                                    </div>
-                                    <div>
-                                        <span className={`text-xs sm:text-sm font-bold uppercase tracking-widest ${style.text} mb-1 block`}>
-                                        {section.group}
-                                        </span>
-                                        <h2 className="text-xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-                                        {section.category}
-                                        </h2>
-                                    </div>
-                                </div>
-                                <div className="inline-flex items-center justify-center px-4 py-1.5 sm:px-5 sm:py-2 bg-white rounded-full text-xs sm:text-sm font-bold text-slate-600 shadow-sm border border-slate-200 w-max self-start sm:self-auto">
-                                {section.members.length} {section.members.length === 1 ? 'Member' : 'Members'}
-                                </div>
-                            </div>
-                            
-                            <div className="p-4 sm:p-6 lg:p-10 bg-gradient-to-b from-white to-slate-50/50">
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-                                {section.members.map((member, memberIndex) => {
-                                    const initials = getInitials(member.name);
-                                    const avatarColor = getAvatarColor(member.name);
-                                    
-                                    const genPhone = generatePhone(member.name);
-                                    const displayPhone = member.phone ? member.phone : genPhone.display;
-                                    const dialPhone = member.phone ? member.phone : genPhone.dial;
-
-                                    const isCurrentlyDragging = draggedMemberInfo?.sectionIdx === sectionIndex && draggedMemberInfo?.memberIdx === memberIndex;
-
-                                    return (
-                                    <div 
-                                        key={member.id} 
-                                        draggable={isAdmin && !searchTerm}
-                                        onDragStart={() => onMemberDragStart(sectionIndex, memberIndex)}
-                                        onDragOver={(e) => e.preventDefault()}
-                                        onDrop={(e) => {
-                                            e.stopPropagation(); // Prevents section drop firing
-                                            onMemberDrop(sectionIndex, memberIndex);
-                                        }}
-                                        className={`group flex flex-row items-center p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/60 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all duration-300 relative overflow-hidden ${isCurrentlyDragging ? 'dragging' : ''}`}
-                                    >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                        
-                                        {isAdmin && !searchTerm && (
-                                            <div className="drag-handle pr-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <GripVertical className="w-4 h-4 text-slate-300" />
-                                            </div>
-                                        )}
-
-                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-inner border-2 border-white ${avatarColor} mr-3 sm:mr-4`}>
-                                        {initials}
-                                        </div>
-                                        
-                                        <div className="flex-1 min-w-0 pr-1">
-                                        <p className="font-bold text-slate-800 text-base sm:text-[17px] truncate group-hover:text-indigo-700 transition-colors">
-                                            {member.name}
-                                        </p>
-                                        {member.designation ? (
-                                            <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium truncate flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-                                            <span className="truncate">{member.designation}</span>
-                                            </p>
-                                        ) : (
-                                            <p className="text-xs sm:text-sm text-slate-400 mt-0.5 font-medium truncate flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
-                                            <span className="truncate">Committee Member</span>
-                                            </p>
-                                        )}
-                                        <p className="text-xs sm:text-sm text-slate-500 mt-1 sm:mt-1.5 font-semibold flex items-center gap-1">
-                                            <Phone className="w-3 h-3 text-emerald-500" /> 
-                                            {displayPhone}
-                                        </p>
-                                        </div>
-                                        
-                                        <div className="flex flex-row gap-2 shrink-0 border-l border-slate-100 pl-2 ml-1">
-                                            {isAdmin ? (
-                                                <>
-                                                    <button 
-                                                        onClick={() => handleEditMember(section, member)}
-                                                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all shadow-sm border border-blue-100"
-                                                        title="Edit Member"
-                                                    >
-                                                        <Edit2 className="w-4 h-4" />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleDeleteMember(section.category, member.id)}
-                                                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm border border-rose-100"
-                                                        title="Delete Member"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <a 
-                                                    href={`tel:${dialPhone}`}
-                                                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-sm border border-emerald-100 hover:border-emerald-500 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-                                                    title={`Call ${member.name}`}
-                                                >
-                                                    <Phone className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-                                                </a>
-                                            )}
-                                        </div>
-                                    </div>
-                                    );
-                                })}
-                                </div>
-                            </div>
-                            </div>
-                        );
-                        })}
-                    </div>
-                    )}
-                </div>
-                
-                <footer className="mt-16 sm:mt-24 border-t border-slate-200 bg-white py-10 sm:py-12">
-                    <div className="max-w-5xl mx-auto px-4 flex flex-col items-center justify-center text-center">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4 sm:mb-5 border border-indigo-100">
-                            <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
-                        </div>
-                        <h4 className="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2 tracking-tight">31<sup>st</sup> Domahi Arong Aji</h4>
-                        <p className="text-sm sm:text-base text-slate-500 font-medium max-w-md px-4 mb-2">
-                            Celebrating culture and heritage from 26th to 28th April 2026.
-                        </p>
-                    </div>
-                </footer>
-
-                {/* --- LOGIN MODAL --- */}
-                {showLoginModal && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl modal-anim relative border border-slate-100">
-                            <button 
-                                onClick={() => setShowLoginModal(false)}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full p-2"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                            <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6 mx-auto">
-                                <Lock className="w-7 h-7" />
-                            </div>
-                            <h3 className="text-2xl font-extrabold text-center text-slate-800 mb-2">Admin Panel</h3>
-                            <p className="text-center text-slate-500 mb-6 text-sm">Log in to manage the committee members.</p>
-                            
-                            <form onSubmit={handleLogin}>
-                                <div className="mb-6">
-                                    <input 
-                                        type="password" 
-                                        placeholder="********"
-                                        className={`w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 bg-slate-50 font-bold tracking-[0.2em] ${loginError ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-200 focus:ring-indigo-500'}`}
-                                        value={passwordInput}
-                                        onChange={(e) => setPasswordInput(e.target.value)}
-                                        autoFocus
-                                    />
-                                    {loginError && <p className="text-rose-500 text-sm mt-2 font-medium px-1 tracking-normal">Incorrect password! Please try again.</p>}
-                                </div>
-                                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-indigo-200">
-                                    Login
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-                {/* --- ADD/EDIT MEMBER MODAL --- */}
-                {showAddModal && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl modal-anim relative max-h-[90vh] overflow-y-auto border border-slate-100">
-                            <button 
-                                onClick={() => setShowAddModal(false)}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full p-2"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                            
-                            <h3 className="text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
-                                <span className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
-                                    {isEditMode ? <Edit2 className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
-                                </span>
-                                {isEditMode ? 'Edit Member Details' : 'Add New Member'}
-                            </h3>
-                            
-                            <form onSubmit={handleAddMember} className="space-y-5">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Committee Group</label>
-                                    <select 
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                                        value={newMember.group}
-                                        onChange={handleGroupChange}
-                                    >
-                                        <option value="Advisors">Advisors</option>
-                                        <option value="Core">Core Committee</option>
-                                        <option value="Sub-Committees">Sub-Committees</option>
-                                        <option value="Members">Members</option>
-                                    </select>
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Category / Section</label>
-                                    
-                                    <select 
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 mb-2"
-                                        value={isNewCategory ? '__NEW__' : newMember.category}
-                                        onChange={(e) => {
-                                            if (e.target.value === '__NEW__') {
-                                                setIsNewCategory(true);
-                                                setNewMember({...newMember, category: ''});
-                                            } else {
-                                                setIsNewCategory(false);
-                                                setNewMember({...newMember, category: e.target.value});
-                                            }
-                                        }}
-                                    >
-                                        {currentGroupCategories.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                        <option value="__NEW__" className="font-bold text-indigo-600">+ Create New Category</option>
-                                    </select>
-
-                                    {isNewCategory && (
-                                        <div className="relative modal-anim">
-                                            <input 
-                                                type="text" 
-                                                placeholder="e.g., Decoration Sub-Committee"
-                                                className="w-full px-4 py-3 rounded-xl border border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                                                value={newMember.category}
-                                                onChange={(e) => setNewMember({...newMember, category: e.target.value})}
-                                                required
-                                            />
-                                            <p className="text-xs text-indigo-600 mt-1 font-medium">Creating a new category inside {newMember.group}.</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Full Name</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="e.g., Sar Rahul Teron"
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                                        value={newMember.name}
-                                        onChange={(e) => setNewMember({...newMember, name: e.target.value})}
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Designation (Optional)</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="e.g., Chairman VDC"
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                                        value={newMember.designation}
-                                        onChange={(e) => setNewMember({...newMember, designation: e.target.value})}
-                                    />
-                                    <p className="text-xs text-slate-400 mt-1">Enter any specific role or title if applicable, else leave blank.</p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Phone Number (Optional)</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="e.g., +91 9876543210"
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                                        value={newMember.phone}
-                                        onChange={(e) => setNewMember({...newMember, phone: e.target.value})}
-                                    />
-                                    <p className="text-xs text-slate-400 mt-1">If left blank, a random virtual number will be assigned.</p>
-                                </div>
-
-                                <button type="submit" className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-colors shadow-md shadow-indigo-200">
-                                    {isEditMode ? 'Update Member' : 'Save Member'}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
+                    <footer className="mt-20 py-12 border-t border-slate-200 bg-white text-center">
+                        <Sparkles className="w-8 h-8 text-indigo-100 mx-auto mb-4" />
+                        <h4 className="text-xl font-extrabold text-slate-800 mb-1 tracking-tight">31<sup>st</sup> Domahi Arong Aji</h4>
+                        <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">© 2026 Karbi Anglong Heritage</p>
+                    </footer>
                 </div>
             );
         }
