@@ -27,6 +27,15 @@
         .modal-anim {
             animation: fadeIn 0.2s ease-out forwards;
         }
+        /* Animated Gradient Text */
+        @keyframes gradient-x {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .animate-gradient-x {
+            background-size: 200% 200%;
+            animation: gradient-x 4s ease infinite;
+        }
     </style>
 </head>
 <body class="bg-[#f8fafc] font-sans text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 relative">
@@ -49,6 +58,7 @@
         const Phone = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
         
         // --- Admin Icons ---
+        const Edit2 = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>;
         const Lock = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
         const LogOut = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>;
         const Trash2 = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
@@ -115,10 +125,26 @@
             };
         };
 
+        // Convert simple string members to objects with IDs and separate fields
+        const parseInitialMember = (memberStr) => {
+            const [name, ...desigParts] = memberStr.split(' - ');
+            return {
+                id: Math.random().toString(36).substr(2, 9),
+                name: name.trim(),
+                designation: desigParts.join(' - ').trim(),
+                phone: ''
+            };
+        };
+
+        const initialDataObj = initialCommitteeData.map(section => ({
+            ...section,
+            members: section.members.map(parseInitialMember)
+        }));
+
         // --- Main App Component ---
         function App() {
             // App State
-            const [committeeData, setCommitteeData] = useState(initialCommitteeData);
+            const [committeeData, setCommitteeData] = useState(initialDataObj);
             const [searchTerm, setSearchTerm] = useState('');
             
             // Admin State
@@ -127,21 +153,26 @@
             const [passwordInput, setPasswordInput] = useState('');
             const [loginError, setLoginError] = useState(false);
 
-            // Add Member State
+            // Add/Edit Member State
             const [showAddModal, setShowAddModal] = useState(false);
             const [isNewCategory, setIsNewCategory] = useState(false);
+            const [isEditMode, setIsEditMode] = useState(false);
+            const [editingMemberId, setEditingMemberId] = useState(null);
             const [newMember, setNewMember] = useState({
                 group: 'Members',
                 category: 'Members',
                 name: '',
-                designation: ''
+                designation: '',
+                phone: ''
             });
 
             // Filter Logic
             const filteredData = committeeData.map(section => {
                 const matchesCategory = section.category.toLowerCase().includes(searchTerm.toLowerCase());
                 const matchedMembers = section.members.filter(member => 
-                member.toLowerCase().includes(searchTerm.toLowerCase())
+                member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                member.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (member.phone && member.phone.includes(searchTerm))
                 );
 
                 if (matchesCategory) {
@@ -185,11 +216,11 @@
                 setIsAdmin(false);
             };
 
-            const handleDeleteMember = (categoryName, memberString) => {
+            const handleDeleteMember = (categoryName, memberId) => {
                 if (window.confirm('Are you sure you want to remove this member?')) {
                     const newData = committeeData.map(section => {
                         if (section.category === categoryName) {
-                            return { ...section, members: section.members.filter(m => m !== memberString) };
+                            return { ...section, members: section.members.filter(m => m.id !== memberId) };
                         }
                         return section;
                     }).filter(section => section.members.length > 0);
@@ -203,8 +234,25 @@
                     group: 'Members',
                     category: 'Members',
                     name: '',
-                    designation: ''
+                    designation: '',
+                    phone: ''
                 });
+                setIsEditMode(false);
+                setEditingMemberId(null);
+                setIsNewCategory(false);
+                setShowAddModal(true);
+            };
+
+            const handleEditMember = (section, member) => {
+                setNewMember({
+                    group: section.group,
+                    category: section.category,
+                    name: member.name,
+                    designation: member.designation,
+                    phone: member.phone || ''
+                });
+                setIsEditMode(true);
+                setEditingMemberId(member.id);
                 setIsNewCategory(false);
                 setShowAddModal(true);
             };
@@ -230,15 +278,28 @@
                 e.preventDefault();
                 if(!newMember.name.trim()) return;
 
-                const fullMemberString = newMember.designation.trim() 
-                    ? `${newMember.name.trim()} - ${newMember.designation.trim()}`
-                    : newMember.name.trim();
+                const updatedMemberObj = {
+                    id: isEditMode ? editingMemberId : Math.random().toString(36).substr(2, 9),
+                    name: newMember.name.trim(),
+                    designation: newMember.designation.trim(),
+                    phone: newMember.phone.trim()
+                };
+
+                let newData = [...committeeData];
+
+                // If in edit mode, remove the old instance before adding updated one
+                if (isEditMode) {
+                    newData = newData.map(sec => ({
+                        ...sec,
+                        members: sec.members.filter(m => m.id !== editingMemberId)
+                    }));
+                }
 
                 let categoryFound = false;
-                let newData = committeeData.map(section => {
+                newData = newData.map(section => {
                     if (section.group === newMember.group && section.category.toLowerCase() === newMember.category.toLowerCase()) {
                         categoryFound = true;
-                        return { ...section, members: [...section.members, fullMemberString] };
+                        return { ...section, members: [...section.members, updatedMemberObj] };
                     }
                     return section;
                 });
@@ -247,9 +308,12 @@
                     newData.push({
                         group: newMember.group,
                         category: newMember.category || newMember.group,
-                        members: [fullMemberString]
+                        members: [updatedMemberObj]
                     });
                 }
+
+                // Remove sections that are now empty
+                newData = newData.filter(section => section.members.length > 0);
 
                 setCommitteeData(newData);
                 setShowAddModal(false);
@@ -258,6 +322,30 @@
             return (
                 <div className="pb-16 bg-[#f8fafc] min-h-screen relative">
                 
+                {/* --- Top Navbar / Header for Admin --- */}
+                <div className="absolute top-0 left-0 w-full p-4 sm:p-6 flex justify-between items-center z-50">
+                    <div className="text-white/80 font-bold text-xs sm:text-sm tracking-widest uppercase">Domahi 2026</div>
+                    {isAdmin ? (
+                        <button 
+                            onClick={handleLogout}
+                            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs sm:text-sm font-bold backdrop-blur-md transition-all border border-white/20 shadow-sm"
+                        >
+                            <LogOut className="w-3 h-3 sm:w-4 sm:h-4" /> 
+                            <span className="hidden sm:inline">Logout Admin</span>
+                            <span className="sm:hidden">Logout</span>
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={() => setShowLoginModal(true)}
+                            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs sm:text-sm font-bold backdrop-blur-md transition-all border border-white/20 shadow-sm"
+                        >
+                            <Lock className="w-3 h-3 sm:w-4 sm:h-4" /> 
+                            <span className="hidden sm:inline">Admin Login</span>
+                            <span className="sm:hidden">Admin</span>
+                        </button>
+                    )}
+                </div>
+
                 {/* --- Admin Add Button (Floating) --- */}
                 {isAdmin && (
                     <button 
@@ -270,7 +358,7 @@
                 )}
 
                 {/* Premium Hero Section */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-800 pt-16 pb-28 sm:pt-20 sm:pb-32 px-4 sm:px-6 shadow-2xl">
+                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-800 pt-24 pb-28 sm:pt-28 sm:pb-32 px-4 sm:px-6 shadow-2xl">
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-30 pointer-events-none">
                     <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[70%] rounded-full bg-gradient-to-br from-purple-400 to-indigo-300 blur-3xl mix-blend-overlay"></div>
                     <div className="absolute top-[30%] -right-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-bl from-pink-400 to-orange-300 blur-3xl mix-blend-overlay"></div>
@@ -282,9 +370,10 @@
                         Reception Committee
                     </div>
                     
-                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-blue-200 drop-shadow-sm leading-tight">
+                    {/* Animated Text Here */}
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-200 to-white animate-gradient-x drop-shadow-sm leading-tight">
                         31<sup>st</sup> DOMAHI ARONG AJI <br className="hidden sm:block" /> 
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-300"> 2026</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400"> 2026</span>
                     </h1>
                     
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-8 mt-6 sm:mt-10 text-xs sm:text-sm md:text-base font-medium text-indigo-50 bg-black/30 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 w-full sm:w-max mx-auto backdrop-blur-md shadow-xl">
@@ -378,15 +467,17 @@
                             <div className="p-4 sm:p-6 lg:p-10 bg-gradient-to-b from-white to-slate-50/50">
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                                 {section.members.map((member, mIndex) => {
-                                    const [name, ...designationParts] = member.split(' - ');
-                                    const designation = designationParts.join(' - ');
-                                    const initials = getInitials(name);
-                                    const avatarColor = getAvatarColor(name);
-                                    const phoneInfo = generatePhone(name);
+                                    const initials = getInitials(member.name);
+                                    const avatarColor = getAvatarColor(member.name);
+                                    
+                                    // Use custom phone if provided, otherwise fallback to generated
+                                    const genPhone = generatePhone(member.name);
+                                    const displayPhone = member.phone ? member.phone : genPhone.display;
+                                    const dialPhone = member.phone ? member.phone : genPhone.dial;
 
                                     return (
                                     <div 
-                                        key={mIndex} 
+                                        key={member.id || mIndex} 
                                         className="group flex items-center p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/60 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all duration-300 relative overflow-hidden"
                                     >
                                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -397,12 +488,12 @@
                                         
                                         <div className="flex-1 min-w-0 pr-2">
                                         <p className="font-bold text-slate-800 text-base sm:text-[17px] truncate group-hover:text-indigo-700 transition-colors">
-                                            {name.trim()}
+                                            {member.name}
                                         </p>
-                                        {designation ? (
+                                        {member.designation ? (
                                             <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium truncate flex items-center gap-1.5">
                                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-                                            <span className="truncate">{designation.trim()}</span>
+                                            <span className="truncate">{member.designation}</span>
                                             </p>
                                         ) : (
                                             <p className="text-xs sm:text-sm text-slate-400 mt-0.5 font-medium truncate flex items-center gap-1.5">
@@ -412,27 +503,36 @@
                                         )}
                                         <p className="text-xs sm:text-sm text-slate-500 mt-1 sm:mt-1.5 font-semibold flex items-center gap-1">
                                             <Phone className="w-3 h-3 text-emerald-500" /> 
-                                            {phoneInfo.display}
+                                            {displayPhone}
                                         </p>
                                         </div>
                                         
-                                        {/* Action Buttons Container */}
-                                        <div className="flex flex-col gap-2 shrink-0">
+                                        {/* Action Buttons Container - Updated for Mobile View */}
+                                        <div className="flex flex-row sm:flex-col gap-1.5 sm:gap-2 shrink-0 ml-auto pl-2">
                                             {isAdmin && (
-                                                <button 
-                                                    onClick={() => handleDeleteMember(section.category, member)}
-                                                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm border border-rose-100 hover:border-rose-500"
-                                                    title="Delete Member"
-                                                >
-                                                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                                                </button>
+                                                <React.Fragment>
+                                                    <button 
+                                                        onClick={() => handleEditMember(section, member)}
+                                                        className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all shadow-sm border border-blue-100 hover:border-blue-500"
+                                                        title="Edit Member"
+                                                    >
+                                                        <Edit2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteMember(section.category, member.id)}
+                                                        className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm border border-rose-100 hover:border-rose-500"
+                                                        title="Delete Member"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                    </button>
+                                                </React.Fragment>
                                             )}
                                             
                                             {!isAdmin && (
                                                 <a 
-                                                    href={`tel:${phoneInfo.dial}`}
+                                                    href={`tel:${dialPhone}`}
                                                     className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-sm border border-emerald-100 hover:border-emerald-500 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-                                                    title={`Call ${name.trim()}`}
+                                                    title={`Call ${member.name}`}
                                                 >
                                                     <Phone className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
                                                 </a>
@@ -450,33 +550,16 @@
                     )}
                 </div>
                 
-                {/* Footer and Admin Toggle */}
+                {/* Footer (Admin Toggle removed from here) */}
                 <footer className="mt-16 sm:mt-24 border-t border-slate-200 bg-white py-10 sm:py-12">
                     <div className="max-w-5xl mx-auto px-4 flex flex-col items-center justify-center text-center">
                         <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4 sm:mb-5 border border-indigo-100">
                             <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
                         </div>
                         <h4 className="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2 tracking-tight">31<sup>st</sup> Domahi Arong Aji</h4>
-                        <p className="text-sm sm:text-base text-slate-500 font-medium max-w-md px-4 mb-6">
+                        <p className="text-sm sm:text-base text-slate-500 font-medium max-w-md px-4 mb-2">
                             Celebrating culture and heritage from 26th to 28th April 2026.
                         </p>
-                        
-                        {/* Admin Login/Logout Button */}
-                        {isAdmin ? (
-                            <button 
-                                onClick={handleLogout}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-600 rounded-full text-sm font-bold hover:bg-slate-200 transition-colors border border-slate-300"
-                            >
-                                <LogOut className="w-4 h-4" /> Logout Admin
-                            </button>
-                        ) : (
-                            <button 
-                                onClick={() => setShowLoginModal(true)}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-full text-sm font-bold hover:bg-indigo-100 transition-colors border border-indigo-200"
-                            >
-                                <Lock className="w-4 h-4" /> Admin Login
-                            </button>
-                        )}
                     </div>
                 </footer>
 
@@ -500,7 +583,7 @@
                                 <div className="mb-6">
                                     <input 
                                         type="password" 
-                                        placeholder="Password (arya123)"
+                                        placeholder="Enter Password"
                                         className={`w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 bg-slate-50 ${loginError ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-200 focus:ring-indigo-500'}`}
                                         value={passwordInput}
                                         onChange={(e) => setPasswordInput(e.target.value)}
@@ -516,7 +599,7 @@
                     </div>
                 )}
 
-                {/* --- ADD MEMBER MODAL --- */}
+                {/* --- ADD/EDIT MEMBER MODAL --- */}
                 {showAddModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                         <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl modal-anim relative max-h-[90vh] overflow-y-auto border border-slate-100">
@@ -528,8 +611,10 @@
                             </button>
                             
                             <h3 className="text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
-                                <span className="bg-indigo-100 text-indigo-600 p-2 rounded-lg"><Plus className="w-6 h-6" /></span>
-                                Add New Member
+                                <span className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                                    {isEditMode ? <Edit2 className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
+                                </span>
+                                {isEditMode ? 'Edit Member Details' : 'Add New Member'}
                             </h3>
                             
                             <form onSubmit={handleAddMember} className="space-y-5">
@@ -610,8 +695,20 @@
                                     <p className="text-xs text-slate-400 mt-1">Enter any specific role or title if applicable, else leave blank.</p>
                                 </div>
 
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Phone Number (Optional)</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="e.g., +91 9876543210"
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                                        value={newMember.phone}
+                                        onChange={(e) => setNewMember({...newMember, phone: e.target.value})}
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1">If left blank, a random virtual number will be assigned.</p>
+                                </div>
+
                                 <button type="submit" className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-colors shadow-md shadow-indigo-200">
-                                    Save Member
+                                    {isEditMode ? 'Update Member' : 'Save Member'}
                                 </button>
                             </form>
                         </div>
